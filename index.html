@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>ECR-RS テスト</title>
+  <style>
+    :root {
+      --bg: #f5f7fb;
+      --card: #ffffff;
+      --text: #1f2937;
+      --muted: #6b7280;
+      --line: #e5e7eb;
+      --primary: #2563eb;
+      --primary-soft: #dbeafe;
+      --secondary: #7c3aed;
+      --good: #059669;
+      --warn: #d97706;
+      --danger: #dc2626;
+      --shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      --radius: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Hiragino Sans", "Yu Gothic UI", "Yu Gothic", sans-serif;
+      background: linear-gradient(180deg, #f8fbff 0%, var(--bg) 100%);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .wrap {
+      width: min(100%, 920px);
+      margin: 0 auto;
+      padding: 14px 12px 40px;
+    }
+
+    .hero, .panel, .result-card, .sticky {
+      background: var(--card);
+      border: 1px solid rgba(229,231,235,.95);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .hero { padding: 20px 16px; margin-bottom: 14px; }
+    h1 { margin: 0 0 8px; font-size: 1.7rem; line-height: 1.25; }
+    h2 { margin: 0 0 10px; font-size: 1.1rem; }
+    h3 { margin: 0 0 8px; font-size: 1rem; }
+    p { margin: 0 0 10px; }
+    .muted { color: var(--muted); }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .info-item {
+      background: #f9fafb;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 10px 12px;
+      font-size: .92rem;
+    }
+
+    .target-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .tab-btn {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 14px;
+      padding: 12px 10px;
+      font-weight: 700;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    .tab-btn.active {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary);
+    }
+
+    .progress-box { margin-top: 12px; }
+    .progress-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: .92rem;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .progress {
+      height: 10px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #60a5fa 0%, var(--secondary) 100%);
+      transition: width .25s ease;
+    }
+
+    .panel { padding: 16px 14px; margin-bottom: 12px; }
+    .target-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: .82rem;
+      font-weight: 700;
+      background: #eef2ff;
+      color: #4338ca;
+    }
+
+    .question-list { display: grid; gap: 10px; }
+    .q-card {
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px 12px;
+      background: #fff;
+    }
+    .q-head {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-bottom: 10px;
+    }
+    .q-no {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: #ede9fe;
+      color: #6d28d9;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+    .q-text { font-weight: 600; }
+
+    .choices {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .choice input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .choice label {
+      min-height: 56px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      gap: 2px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 8px 6px;
+      cursor: pointer;
+      background: #fff;
+      transition: .18s ease;
+      user-select: none;
+    }
+
+    .choice strong { font-size: 1rem; line-height: 1; }
+    .choice span { font-size: .73rem; color: var(--muted); line-height: 1.2; }
+    .choice input:checked + label {
+      border-color: var(--primary);
+      background: var(--primary-soft);
+      color: var(--primary);
+      box-shadow: 0 6px 14px rgba(37,99,235,.14);
+      transform: translateY(-1px);
+    }
+    .choice input:checked + label span { color: var(--primary); }
+
+    .sticky {
+      position: sticky;
+      bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      z-index: 20;
+    }
+
+    .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      appearance: none;
+      border: none;
+      border-radius: 999px;
+      padding: 12px 16px;
+      font-size: .95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: .18s ease;
+    }
+    button:hover { transform: translateY(-1px); }
+    .primary { background: var(--primary); color: #fff; }
+    .secondary { background: #eef2ff; color: #3730a3; }
+    .ghost { background: #f3f4f6; color: #374151; }
+
+    .result-area {
+      display: none;
+      margin-top: 14px;
+      gap: 12px;
+    }
+    .result-area.show { display: grid; }
+    .result-card { padding: 16px 14px; }
+
+    .score-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .mini-card {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 12px;
+      background: #fff;
+    }
+
+    .score-num {
+      font-size: 1.5rem;
+      font-weight: 800;
+      line-height: 1.2;
+      margin-bottom: 6px;
+    }
+
+    .scale {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 6px 10px;
+      font-size: .82rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .secure { background: #ecfdf5; color: var(--good); }
+    .mixed { background: #fffbeb; color: var(--warn); }
+    .insecure { background: #fef2f2; color: var(--danger); }
+
+    .summary-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: .94rem;
+    }
+    .summary-table th,
+    .summary-table td {
+      border-bottom: 1px solid var(--line);
+      padding: 10px 8px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .note {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 14px;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      font-size: .92rem;
+    }
+
+    @media (max-width: 640px) {
+      .wrap { padding: 10px 10px 30px; }
+      .info-grid, .score-grid { grid-template-columns: 1fr; }
+      .target-tabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .sticky {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .actions button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>ECR-RS テスト</h1>
+      <p>親密な関係におけるアタッチメント傾向を確認するための自己回答サイトです。<strong>母親・父親・配偶者／恋人・友人</strong>の4対象について、それぞれ8項目に答えます。</p>
+      <p class="muted">回答は 1〜7 点です。1＝まったくあてはまらない、7＝非常にあてはまる</p>
+
+      <div class="info-grid">
+        <div class="info-item"><strong>回避</strong><br>相手に頼ることや心を開くことへの抵抗の強さ</div>
+        <div class="info-item"><strong>不安</strong><br>見捨てられ不安や、相手に十分大切にされていないのではという心配の強さ</div>
+        <div class="info-item"><strong>採点</strong><br>対象ごとに「回避」と「不安」を別々に平均点で算出</div>
+        <div class="info-item"><strong>注意</strong><br>これは自己理解のための尺度で、医療的診断ではありません</div>
+      </div>
+
+      <div class="progress-box">
+        <div class="progress-meta">
+          <span id="progressText">回答数：0 / 32</span>
+          <span id="percentText">0%</span>
+        </div>
+        <div class="progress" aria-hidden="true"><div class="progress-bar" id="progressBar"></div></div>
+      </div>
+    </section>
+
+    <div class="target-tabs" id="targetTabs"></div>
+    <section id="questionPanel"></section>
+    <section class="result-area" id="resultArea"></section>
+
+    <div class="sticky">
+      <div class="muted" id="statusText">すべて回答すると採点できます。</div>
+      <div class="actions">
+        <button class="ghost" id="resetBtn" type="button">回答をリセット</button>
+        <button class="secondary" id="saveBtn" type="button">途中保存</button>
+        <button class="primary" id="scoreBtn" type="button">採点する</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const scaleLabels = {
+      1: 'まったくあてはまらない',
+      2: 'あまりあてはまらない',
+      3: 'ややあてはまらない',
+      4: 'どちらともいえない',
+      5: 'ややあてはまる',
+      6: 'かなりあてはまる',
+      7: '非常にあてはまる'
+    };
+
+    const targets = [
+      { key: 'mother', label: '母親' },
+      { key: 'father', label: '父親' },
+      { key: 'partner', label: '配偶者／恋人' },
+      { key: 'friend', label: '友人' }
+    ];
+
+    // 日本語版ECR-RS発表資料に掲載された項目群に基づく実装
+    // 回避5は当該資料で削除項目とされているため除外
+    const items = [
+      { id: 'av1', type: 'avoidance', reverse: true, text: '私は，その人に個人的なことを相談する' },
+      { id: 'av2', type: 'avoidance', reverse: true, text: '私は，たいていその人に自分の問題や心配事を話す' },
+      { id: 'av3', type: 'avoidance', reverse: true, text: 'その人は，私にとって頼りやすい人だ' },
+      { id: 'av4', type: 'avoidance', reverse: true, text: '必要なときはその人に頼り助けてもらうことができる' },
+      { id: 'av6', type: 'avoidance', reverse: false, text: '私は，その人に心を開くことを心地よく感じない' },
+      { id: 'an1', type: 'anxiety', reverse: false, text: '私がその人を大切に思っているほど，その人は私のことを大切に思っていないのではと心配になる' },
+      { id: 'an2', type: 'anxiety', reverse: false, text: 'その人が私のことを本当は大切に思っていないのかもしれないと，たびたび心配になる' },
+      { id: 'an3', type: 'anxiety', reverse: false, text: '私は，その人に見捨てられるのではないかと不安に思う' }
+    ];
+
+    const targetTabs = document.getElementById('targetTabs');
+    const questionPanel = document.getElementById('questionPanel');
+    const resultArea = document.getElementById('resultArea');
+    const progressText = document.getElementById('progressText');
+    const percentText = document.getElementById('percentText');
+    const progressBar = document.getElementById('progressBar');
+    const statusText = document.getElementById('statusText');
+
+    let currentTarget = 'mother';
+
+    function questionName(targetKey, itemId) {
+      return `${targetKey}_${itemId}`;
+    }
+
+    function renderTabs() {
+      targetTabs.innerHTML = targets.map(target => `
+        <button class="tab-btn ${target.key === currentTarget ? 'active' : ''}" type="button" data-target="${target.key}">${target.label}</button>
+      `).join('');
+    }
+
+    function renderPanel() {
+      const target = targets.find(t => t.key === currentTarget);
+      questionPanel.innerHTML = `
+        <section class="panel">
+          <div class="target-title">
+            <div>
+              <h2>${target.label}について答えてください</h2>
+              <p class="muted">この相手との関係を思い浮かべて、もっとも近い数字を選んでください。</p>
+            </div>
+            <span class="badge">${countTargetAnswered(currentTarget)} / ${items.length} 回答</span>
+          </div>
+          <div class="question-list">
+            ${items.map((item, idx) => `
+              <article class="q-card">
+                <div class="q-head">
+                  <div class="q-no">${idx + 1}</div>
+                  <div class="q-text">${item.text}</div>
+                </div>
+                <div class="choices" role="radiogroup" aria-label="${target.label}の質問${idx + 1}">
+                  ${[1,2,3,4,5,6,7].map(value => `
+                    <div class="choice">
+                      <input type="radio" name="${questionName(currentTarget, item.id)}" id="${questionName(currentTarget, item.id)}_${value}" value="${value}">
+                      <label for="${questionName(currentTarget, item.id)}_${value}">
+                        <strong>${value}</strong>
+                        <span>${scaleLabels[value]}</span>
+                      </label>
+                    </div>
+                  `).join('')}
+                </div>
+              </article>
+            `).join('')}
+          </div>
+        </section>
+      `;
+      restoreCurrentPanelSelections();
+    }
+
+    function getStoredAnswers() {
+      try {
+        return JSON.parse(localStorage.getItem('ecrRsAnswers') || '{}');
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function setStoredAnswers(data) {
+      localStorage.setItem('ecrRsAnswers', JSON.stringify(data));
+    }
+
+    function restoreCurrentPanelSelections() {
+      const answers = getStoredAnswers();
+      items.forEach(item => {
+        const key = questionName(currentTarget, item.id);
+        const value = answers[key];
+        if (value) {
+          const input = document.getElementById(`${key}_${value}`);
+          if (input) input.checked = true;
+        }
+      });
+    }
+
+    function saveCurrentPanelSelections() {
+      const answers = getStoredAnswers();
+      items.forEach(item => {
+        const name = questionName(currentTarget, item.id);
+        const checked = document.querySelector(`input[name="${name}"]:checked`);
+        if (checked) answers[name] = Number(checked.value);
+      });
+      setStoredAnswers(answers);
+    }
+
+    function countAllAnswered() {
+      const answers = getStoredAnswers();
+      return targets.reduce((total, target) => {
+        return total + items.filter(item => answers[questionName(target.key, item.id)] != null).length;
+      }, 0);
+    }
+
+    function countTargetAnswered(targetKey) {
+      const answers = getStoredAnswers();
+      return items.filter(item => answers[questionName(targetKey, item.id)] != null).length;
+    }
+
+    function updateProgress() {
+      const total = targets.length * items.length;
+      const count = countAllAnswered();
+      const percent = Math.round((count / total) * 100);
+      progressText.textContent = `回答数：${count} / ${total}`;
+      percentText.textContent = `${percent}%`;
+      progressBar.style.width = `${percent}%`;
+      statusText.textContent = count === total ? '回答がそろいました。採点できます。' : `未回答：${total - count}問`;
+      renderTabs();
+    }
+
+    function reverse7(value) {
+      return 8 - value;
+    }
+
+    function getScores() {
+      const answers = getStoredAnswers();
+      const scores = {};
+
+      for (const target of targets) {
+        const vals = items.map(item => ({ ...item, value: answers[questionName(target.key, item.id)] }));
+        if (vals.some(v => v.value == null)) return null;
+
+        const avoidanceItems = vals.filter(v => v.type === 'avoidance').map(v => v.reverse ? reverse7(v.value) : v.value);
+        const anxietyItems = vals.filter(v => v.type === 'anxiety').map(v => v.value);
+
+        const avoidance = avoidanceItems.reduce((a,b) => a+b, 0) / avoidanceItems.length;
+        const anxiety = anxietyItems.reduce((a,b) => a+b, 0) / anxietyItems.length;
+
+        scores[target.key] = {
+          label: target.label,
+          avoidance: Number(avoidance.toFixed(2)),
+          anxiety: Number(anxiety.toFixed(2))
+        };
+      }
+      return scores;
+    }
+
+    function classify(avoidance, anxiety) {
+      // 便宜的な画面表示分類。ECR-RS自体の正式診断区分ではない。
+      if (avoidance < 4 && anxiety < 4) {
+        return { label: '比較的安定', cls: 'secure', text: '相手に頼ることへの抵抗も、見捨てられ不安も比較的小さい状態です。' };
+      }
+      if (avoidance >= 4 && anxiety < 4) {
+        return { label: '回避が高め', cls: 'mixed', text: '相手に近づきすぎることを避けやすい傾向があります。' };
+      }
+      if (avoidance < 4 && anxiety >= 4) {
+        return { label: '不安が高め', cls: 'mixed', text: '関係を大切にする一方で、拒絶や見捨てられへの不安が出やすい状態です。' };
+      }
+      return { label: '回避・不安とも高め', cls: 'insecure', text: '親密さへの抵抗と見捨てられ不安がどちらも強めです。' };
+    }
+
+    function renderResults() {
+      saveCurrentPanelSelections();
+      const scores = getScores();
+      if (!scores) {
+        alert('未回答があります。すべての対象・項目に回答してください。');
+        return;
+      }
+
+      const cards = targets.map(target => {
+        const s = scores[target.key];
+        const c = classify(s.avoidance, s.anxiety);
+        return `
+          <section class="result-card">
+            <h2>${s.label}</h2>
+            <span class="scale ${c.cls}">${c.label}</span>
+            <p>${c.text}</p>
+            <div class="score-grid">
+              <div class="mini-card">
+                <h3>回避</h3>
+                <div class="score-num">${s.avoidance}</div>
+                <p class="muted">1〜4は逆転処理後の平均</p>
+              </div>
+              <div class="mini-card">
+                <h3>不安</h3>
+                <div class="score-num">${s.anxiety}</div>
+                <p class="muted">3項目の平均</p>
+              </div>
+            </div>
+          </section>
+        `;
+      }).join('');
+
+      const rows = targets.map(target => {
+        const s = scores[target.key];
+        return `<tr><th>${s.label}</th><td>${s.avoidance}</td><td>${s.anxiety}</td></tr>`;
+      }).join('');
+
+      resultArea.innerHTML = `
+        ${cards}
+        <section class="result-card">
+          <h2>一覧</h2>
+          <table class="summary-table">
+            <thead>
+              <tr><th>対象</th><th>回避</th><th>不安</th></tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <div class="note">
+            この画面の「比較的安定」「回避が高め」などの表示は、見やすさのための補助ラベルです。正式な尺度得点は、各対象ごとの<strong>回避平均</strong>と<strong>不安平均</strong>です。
+          </div>
+        </section>
+      `;
+      resultArea.classList.add('show');
+      resultArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function saveAll() {
+      saveCurrentPanelSelections();
+      localStorage.setItem('ecrRsSavedAt', new Date().toISOString());
+      alert('回答を保存しました。');
+      updateProgress();
+    }
+
+    function resetAll() {
+      localStorage.removeItem('ecrRsAnswers');
+      localStorage.removeItem('ecrRsSavedAt');
+      resultArea.innerHTML = '';
+      resultArea.classList.remove('show');
+      renderTabs();
+      renderPanel();
+      updateProgress();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    targetTabs.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-target]');
+      if (!btn) return;
+      saveCurrentPanelSelections();
+      currentTarget = btn.dataset.target;
+      renderTabs();
+      renderPanel();
+      updateProgress();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    document.addEventListener('change', (e) => {
+      if (e.target.matches('input[type="radio"]')) {
+        saveCurrentPanelSelections();
+        updateProgress();
+        renderPanel();
+      }
+    });
+
+    document.getElementById('scoreBtn').addEventListener('click', renderResults);
+    document.getElementById('saveBtn').addEventListener('click', saveAll);
+    document.getElementById('resetBtn').addEventListener('click', resetAll);
+
+    renderTabs();
+    renderPanel();
+    updateProgress();
+  </script>
+</body>
+</html>
