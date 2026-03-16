@@ -308,7 +308,7 @@
   <main class="wrap">
     <section class="hero">
       <h1>ECR-RS テスト</h1>
-      <p>親密な関係におけるアタッチメント傾向を確認するための自己回答サイトです。<strong>母親・父親・配偶者／恋人・友人</strong>の4対象について、それぞれ8項目に答えます。</p>
+      <p>親密な関係におけるアタッチメント傾向を確認するための自己回答サイトです。<strong>母親・父親・配偶者／恋人・友人</strong>の4対象について、それぞれ8項目に答えます。各対象で8問答えると、その対象の結果を表示できます。</p>
       <p class="muted">回答は 1〜7 点です。1＝まったくあてはまらない、7＝非常にあてはまる</p>
 
       <div class="info-grid">
@@ -332,7 +332,7 @@
     <section class="result-area" id="resultArea"></section>
 
     <div class="sticky">
-      <div class="muted" id="statusText">すべて回答すると採点できます。</div>
+      <div class="muted" id="statusText">各対象で8問回答すると、その対象の結果を表示できます。</div>
       <div class="actions">
         <button class="ghost" id="resetBtn" type="button">回答をリセット</button>
         <button class="secondary" id="saveBtn" type="button">途中保存</button>
@@ -482,7 +482,10 @@
       progressText.textContent = `回答数：${count} / ${total}`;
       percentText.textContent = `${percent}%`;
       progressBar.style.width = `${percent}%`;
-      statusText.textContent = count === total ? '回答がそろいました。採点できます。' : `未回答：${total - count}問`;
+      const currentAnswered = countTargetAnswered(currentTarget);
+      statusText.textContent = currentAnswered === items.length
+        ? 'この対象は回答がそろいました。結果を表示できます。'
+        : `この対象の未回答：${items.length - currentAnswered}問`;
       renderTabs();
     }
 
@@ -490,25 +493,35 @@
       return 8 - value;
     }
 
-    function getScores() {
+    function getScoreForTarget(targetKey) {
       const answers = getStoredAnswers();
+      const vals = items.map(item => ({ ...item, value: answers[questionName(targetKey, item.id)] }));
+      if (vals.some(v => v.value == null)) return null;
+
+      const avoidanceItems = vals
+        .filter(v => v.type === 'avoidance')
+        .map(v => v.reverse ? reverse7(v.value) : v.value);
+      const anxietyItems = vals
+        .filter(v => v.type === 'anxiety')
+        .map(v => v.value);
+
+      const avoidance = avoidanceItems.reduce((a, b) => a + b, 0) / avoidanceItems.length;
+      const anxiety = anxietyItems.reduce((a, b) => a + b, 0) / anxietyItems.length;
+      const target = targets.find(t => t.key === targetKey);
+
+      return {
+        key: targetKey,
+        label: target.label,
+        avoidance: Number(avoidance.toFixed(2)),
+        anxiety: Number(anxiety.toFixed(2))
+      };
+    }
+
+    function getScores() {
       const scores = {};
-
       for (const target of targets) {
-        const vals = items.map(item => ({ ...item, value: answers[questionName(target.key, item.id)] }));
-        if (vals.some(v => v.value == null)) return null;
-
-        const avoidanceItems = vals.filter(v => v.type === 'avoidance').map(v => v.reverse ? reverse7(v.value) : v.value);
-        const anxietyItems = vals.filter(v => v.type === 'anxiety').map(v => v.value);
-
-        const avoidance = avoidanceItems.reduce((a,b) => a+b, 0) / avoidanceItems.length;
-        const anxiety = anxietyItems.reduce((a,b) => a+b, 0) / anxietyItems.length;
-
-        scores[target.key] = {
-          label: target.label,
-          avoidance: Number(avoidance.toFixed(2)),
-          anxiety: Number(anxiety.toFixed(2))
-        };
+        const score = getScoreForTarget(target.key);
+        if (score) scores[target.key] = score;
       }
       return scores;
     }
@@ -527,47 +540,48 @@
       return { label: '回避・不安とも高め', cls: 'insecure', text: '親密さへの抵抗と見捨てられ不安がどちらも強めです。' };
     }
 
+    function renderSingleResultCard(score) {
+      const c = classify(score.avoidance, score.anxiety);
+      return `
+        <section class="result-card">
+          <h2>${score.label}</h2>
+          <span class="scale ${c.cls}">${c.label}</span>
+          <p>${c.text}</p>
+          <div class="score-grid">
+            <div class="mini-card">
+              <h3>回避</h3>
+              <div class="score-num">${score.avoidance}</div>
+              <p class="muted">1〜4は逆転処理後の平均</p>
+            </div>
+            <div class="mini-card">
+              <h3>不安</h3>
+              <div class="score-num">${score.anxiety}</div>
+              <p class="muted">3項目の平均</p>
+            </div>
+          </div>
+        </section>
+      `;
+    }
+
     function renderResults() {
       saveCurrentPanelSelections();
-      const scores = getScores();
-      if (!scores) {
-        alert('未回答があります。すべての対象・項目に回答してください。');
+      const currentScore = getScoreForTarget(currentTarget);
+      if (!currentScore) {
+        alert('この対象には未回答があります。8問すべてに回答してください。');
         return;
       }
 
-      const cards = targets.map(target => {
-        const s = scores[target.key];
-        const c = classify(s.avoidance, s.anxiety);
-        return `
-          <section class="result-card">
-            <h2>${s.label}</h2>
-            <span class="scale ${c.cls}">${c.label}</span>
-            <p>${c.text}</p>
-            <div class="score-grid">
-              <div class="mini-card">
-                <h3>回避</h3>
-                <div class="score-num">${s.avoidance}</div>
-                <p class="muted">1〜4は逆転処理後の平均</p>
-              </div>
-              <div class="mini-card">
-                <h3>不安</h3>
-                <div class="score-num">${s.anxiety}</div>
-                <p class="muted">3項目の平均</p>
-              </div>
-            </div>
-          </section>
-        `;
-      }).join('');
-
-      const rows = targets.map(target => {
-        const s = scores[target.key];
-        return `<tr><th>${s.label}</th><td>${s.avoidance}</td><td>${s.anxiety}</td></tr>`;
-      }).join('');
+      const scores = getScores();
+      const rows = targets
+        .map(target => scores[target.key])
+        .filter(Boolean)
+        .map(s => `<tr><th>${s.label}</th><td>${s.avoidance}</td><td>${s.anxiety}</td></tr>`)
+        .join('');
 
       resultArea.innerHTML = `
-        ${cards}
+        ${renderSingleResultCard(currentScore)}
         <section class="result-card">
-          <h2>一覧</h2>
+          <h2>回答済み対象の一覧</h2>
           <table class="summary-table">
             <thead>
               <tr><th>対象</th><th>回避</th><th>不安</th></tr>
@@ -575,7 +589,7 @@
             <tbody>${rows}</tbody>
           </table>
           <div class="note">
-            この画面の「比較的安定」「回避が高め」などの表示は、見やすさのための補助ラベルです。正式な尺度得点は、各対象ごとの<strong>回避平均</strong>と<strong>不安平均</strong>です。
+            現在表示しているのは<strong>${currentScore.label}</strong>の結果です。ほかの対象も8問すべて回答すれば、その対象の結果を表示できます。
           </div>
         </section>
       `;
